@@ -38,4 +38,4 @@ Connects to the Keen API, pulls down relavent metrics and sends the data to goog
 			    
 	    credentionals_json = keyring.set_password(service_name, 'credentionals_json', credentials)
 
-* Thats it. Now just adjust the metrics in run.get_keen_data() and the inputs in `if __name__ == '__main__'` to run
+* Thats it. Now just adjust the metrics in `run.get_keen_data()` and the inputs in `if __name__ == '__main__'` to run
