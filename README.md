@@ -6,7 +6,7 @@ Connects to the Keen API, pulls down relavent metrics and sends the data to goog
 ### Installation 
 
 * You'll need to download the official [Keen IO Official Python Client Library](https://github.com/keenlabs/KeenClient-Python). You can do this with `pip install keen`
-* Similarly you will need the [Google Spreadsheets Python API](https://github.com/burnash/gspread)
+* Similarly you will need the [Google Spreadsheets Python API](https://github.com/burnash/gspread) - `pip install gspread`
 * Now follow the instructions in the [gspread OAuth2 setup instructions](http://gspread.readthedocs.org/en/latest/oauth2.html) to install the necessary OAuth packages and obtain the needed google drive credentials in json format (Note that in the final step here, you will need to have an existing google sheets file to write to as you will need to share this file with your app to connect them)
 * Install `pandas`: `pip install pandas` (used to combine queries from keen)
 * Install `keyring` (`pip install keyring`). We will use `keyring` to hold our auth credentials for both keen and google
