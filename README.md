@@ -15,7 +15,7 @@ Connects to the Keen API, pulls down relavent metrics and sends the data to goog
 ### Setup
 
 * Log in to your [keen.io](keen.io) account to obtain your project API Credentials. Navigate to your project copy your PROJECT ID, then click on **Show API Keys** to obtain your READ KEY
-* store your keen credentials in the keyring:
+* You can either load the Keen client using a json file, or store your keen credentials in the keyring:
 		
 		import keyring
 		
@@ -25,10 +25,8 @@ Connects to the Keen API, pulls down relavent metrics and sends the data to goog
 		
 		keyring.set_password(service_name, 'project_id', project_id),
 	    keyring.set_password(service_name, 'read_key', read_key)
-	    
-	 remove your credentials from any and all scripts once they are saved in the keyring
 	 
-* store your google drive credentials in the keyring:
+* Similarly you can load the gdrive client using a json file or store your google drive credentials in the keyring:
 
 		import keyring
 
@@ -36,6 +34,6 @@ Connects to the Keen API, pulls down relavent metrics and sends the data to goog
 	    credentials = open(credentials_json, 'r').read()
 		service_name = 'g-drive-keen-credentials'
 			    
-	    credentionals_json = keyring.set_password(service_name, 'credentionals_json', credentials)
+	    keyring.set_password(service_name, 'credentionals_json', credentials)
 
 * Thats it. Now just adjust the metrics in `run.get_keen_data()` and the inputs in `if __name__ == '__main__'` to run
