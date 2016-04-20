@@ -1,4 +1,5 @@
 import keyring
+import json
 import pandas as pd
 from datetime import datetime
 from keen.client import KeenClient
@@ -6,11 +7,30 @@ from keen.client import KeenClient
 from sheets import get_gdrive_client, write_to_sheets
 
 
-def get_keen_client(service_name):
-    client = KeenClient(
-    project_id=keyring.get_password(service_name, 'project_id'),
-    read_key=keyring.get_password(service_name, 'read_key')
-    )
+def get_keen_client(credentials_key):
+    """ Get KeenCLient
+
+    Parameters
+    ----------
+    credentials_key : str
+        either a path to a json file containing 'project_id' and 'read_key'
+        or a service_name for keyring entries containing 'project_id' and
+        'read_key'
+
+    Returns
+    -------
+    KeenClient
+    """
+    if credentials_key.endswith('.json'):
+        credentials = open(credentials_key, 'r').read()
+        credentials = json.loads(credentials)
+        project_id = credentials['project_id']
+        read_key = credentials['read_key']
+    else:
+        project_id=keyring.get_password(service_name, 'project_id')
+        read_key=keyring.get_password(service_name, 'read_key')
+
+    client = KeenClient(project_id=project_id, read_key=read_key)
     return client
 
 
@@ -60,8 +80,11 @@ if __name__ == '__main__':
 
     title = "Buzzworthy - Keen - AOL - Datafeed"
 
-    keen_client = get_keen_client('keen-buzzworthy-aol')
-    gdrive_client = get_gdrive_client('gdrive-keen-buzzworthy-aol')
+    keen_client = get_keen_client(
+        '/home/robertdavidwest/keen-buzzworthy-aol.json')
+
+    gdrive_client = get_gdrive_client(
+        '/home/robertdavidwest/gdrive-keen-buzzworthy-aol.json')
 
     now = datetime.now().ctime()
 

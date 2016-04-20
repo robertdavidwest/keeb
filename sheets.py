@@ -6,11 +6,27 @@ import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 
 
-def get_gdrive_client(keyring_service_name):
+def get_gdrive_client(credentials_key):
+    """
+    Parameters
+    ----------
+    credentials_key : str
+        either a path to a json file containing 'project_id' and 'read_key'
+        or a service_name for keyring entries containing 'project_id' and
+        'read_key'
+
+    Returns
+    -------
+    KeenClient
+    """
+    if credentials_key.endswith('.json'):
+        credentionals_json = open(credentials_key, 'r').read()
+    else:
+        credentionals_json = keyring.get_password(credentials_key,
+                                                 'credentionals_json')
+
     scope = ['https://spreadsheets.google.com/feeds']
 
-    credentionals_json = keyring.get_password(keyring_service_name,
-                                              'credentionals_json')
     credentials = json.loads(credentionals_json)
     credentials = ServiceAccountCredentials.from_json_keyfile_dict(credentials,
                                                                    scope)
