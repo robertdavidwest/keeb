@@ -7,7 +7,8 @@ from oauth2client.service_account import ServiceAccountCredentials
 
 
 def get_gdrive_client(credentials_key):
-    """
+    """ Get gspread client
+
     Parameters
     ----------
     credentials_key : str
@@ -17,7 +18,7 @@ def get_gdrive_client(credentials_key):
 
     Returns
     -------
-    KeenClient
+    gspread client
     """
     if credentials_key.endswith('.json'):
         credentionals_json = open(credentials_key, 'r').read()
