@@ -27,8 +27,8 @@ def get_keen_client(credentials_key):
         project_id = credentials['project_id']
         read_key = credentials['read_key']
     else:
-        project_id=keyring.get_password(service_name, 'project_id')
-        read_key=keyring.get_password(service_name, 'read_key')
+        project_id=keyring.get_password(credentials_key, 'project_id')
+        read_key=keyring.get_password(credentials_key, 'read_key')
 
     client = KeenClient(project_id=project_id, read_key=read_key)
     return client
