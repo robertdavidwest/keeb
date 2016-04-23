@@ -1,5 +1,7 @@
 __author__ = 'rwest'
 
+import pandas as pd
+import numpy as np
 import json
 import keyring
 import gspread
@@ -64,3 +66,48 @@ def write_to_sheets(gc, data, title, sheetname):
 
     # add header row
     wks.insert_row(data.columns.tolist(), index=1)
+
+
+def clean_sheets(gc, title, max_sheets):
+    """
+    Keep the number of sheets in the workbook to a maximum of 'max_sheets'.
+    This method assumes the sheetname contains a time stamp in the first
+    24 chars and will remove worksheets by ages until there are at most '
+    max_sheets' If the sheet does not contain such a time stamp then it will
+    not be removed
+
+    Parameters
+    ----------
+    gc : gspread.authorize
+        google drive client
+    title : str
+        sheets title
+    max_sheets : str
+        the maximum number of sheets to keep in the workbook
+    """
+    wb = gc.open(title)
+    worksheets = wb.worksheets()
+
+    if len(worksheets) <= max_sheets:
+        return
+
+    names = [w.title for w in worksheets]
+    dates = []
+    for name in names:
+        try:
+            date = pd.to_datetime(name[:24])
+            dates.append(date)
+        except ValueError:
+            dates.append(np.nan)
+
+    sheet_df = pd.DataFrame({'date': dates}, index=names).sort_values('date')
+    num_drops = len(sheet_df) - max_sheets
+    drop_sheet_df = sheet_df[:num_drops]
+
+    print 'Sheet limit reached. {} sheets will be deleted'.format(
+        len(drop_sheet_df))
+
+    for ws in worksheets:
+        if ws.title in drop_sheet_df.index:
+            print 'deleting sheet: ' + ws.title
+            wb.del_worksheet(ws)

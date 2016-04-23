@@ -2,9 +2,11 @@ import keyring
 import json
 import pandas as pd
 from datetime import datetime
+from pytz import timezone
+
 from keen.client import KeenClient
 
-from sheets import get_gdrive_client, write_to_sheets
+from sheets import get_gdrive_client, write_to_sheets, clean_sheets
 
 
 def get_keen_client(credentials_key):
@@ -38,7 +40,7 @@ def get_keen_data(client, timeframe):
     """
     Count both 'prerollplay' and 'contentplay' from keen, aggregated by
     campaign and refer
-
+im
     Parameters
     ----------
     client : keen.client.KeenClient
@@ -78,22 +80,44 @@ def get_keen_data(client, timeframe):
 
 if __name__ == '__main__':
 
+    credentials_switch = 'json'
+
     title = "Buzzworthy - Keen - AOL - Datafeed"
 
-    keen_client = get_keen_client(
-        '/home/robertdavidwest/keen-buzzworthy-aol.json')
+    if credentials_switch == 'keyring':
+        keen_client = get_keen_client('keen-buzzworthy-aol')
+        gdrive_client = get_gdrive_client('gdrive-keen-buzzworthy-aol')
 
-    gdrive_client = get_gdrive_client(
-        '/home/robertdavidwest/gdrive-keen-buzzworthy-aol.json')
+    elif credentials_switch == 'json':
+        keen_client = get_keen_client(
+            'home/robertdavidwest/keen-buzzworthy-aol.json')
 
-    now = datetime.now().ctime()
+        gdrive_client = get_gdrive_client(
+            'home/robertdavidwest/gdrive-keen-buzzworthy-aol.json')
+    else:
+        exit()
 
-    timeframe = 'this_day'
-    sheetname = '{} {}'.format(now, timeframe)
+    tz = timezone('US/Eastern')
+    eastern_now = datetime.now(tz)
+    local_now =  datetime.now()
+    display_now = eastern_now.ctime()
+
+    if eastern_now.day != local_now.day:
+        raise AssertionError("Changing to Eastern time in sheetname will show"
+                             "incorrect day")
+
+    # see all timeframe options here:
+    # https://keen.io/docs/api/#timeframe
+
+    timeframe = 'previous_1_days'
+    sheetname = '{} {}'.format(display_now, 'Yesterday')
     results = get_keen_data(keen_client, timeframe=timeframe)
     write_to_sheets(gdrive_client, results, title, sheetname)
 
     timeframe = 'this_month'
-    sheetname = '{} {}'.format(now, timeframe)
+    sheetname = '{} {}'.format(display_now, timeframe)
     results = get_keen_data(keen_client, timeframe=timeframe)
     write_to_sheets(gdrive_client, results, title, sheetname)
+
+    # No more than 20 sheets in workbook. Older results are deleted.
+    clean_sheets(gdrive_client, title, max_sheets=20)
