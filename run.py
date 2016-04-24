@@ -90,10 +90,10 @@ if __name__ == '__main__':
 
     elif credentials_switch == 'json':
         keen_client = get_keen_client(
-            'home/robertdavidwest/keen-buzzworthy-aol.json')
+            '/home/robertdavidwest/keen-buzzworthy-aol.json')
 
         gdrive_client = get_gdrive_client(
-            'home/robertdavidwest/gdrive-keen-buzzworthy-aol.json')
+            '/home/robertdavidwest/gdrive-keen-buzzworthy-aol.json')
     else:
         exit()
 
