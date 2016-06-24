@@ -5,7 +5,7 @@ from datetime import datetime
 from pytz import timezone
 
 from keen.client import KeenClient
-
+from selenium_aol import get_aol_data
 from sheets import get_gdrive_client, write_to_sheets, clean_sheets
 
 
@@ -80,23 +80,22 @@ im
 
 if __name__ == '__main__':
 
-    credentials_switch = 'json'
 
     title = "Buzzworthy - Keen - AOL - Datafeed"
 
-    if credentials_switch == 'keyring':
-        keen_client = get_keen_client('keen-buzzworthy-aol')
-        gdrive_client = get_gdrive_client('gdrive-keen-buzzworthy-aol')
+    keen_client = get_keen_client(
+        '/home/robertdavidwest/keen-buzzworthy-aol.json')
 
-    elif credentials_switch == 'json':
-        keen_client = get_keen_client(
-            '/home/robertdavidwest/keen-buzzworthy-aol.json')
+    gdrive_client = get_gdrive_client(
+        '/home/robertdavidwest/gdrive-keen-buzzworthy-aol.json')
 
-        gdrive_client = get_gdrive_client(
-            '/home/robertdavidwest/gdrive-keen-buzzworthy-aol.json')
-    else:
-        exit()
+    '''
+    aol_portal_json = '/home/robertdavidwest/aol-portal.json'
+    d = json.load(open(aol_portal_json, 'r'))
+    aol_df = get_aol_data(d['username'], d['password'])
+    print aol_df
 
+    '''
     tz = timezone('US/Eastern')
     eastern_now = datetime.now(tz)
     local_now =  datetime.now()
