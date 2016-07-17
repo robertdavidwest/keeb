@@ -7,7 +7,6 @@ import keyring
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 
-
 def get_gdrive_client(credentials_key):
     """ Get gspread client
 
@@ -40,10 +39,8 @@ def get_gdrive_client(credentials_key):
 def write_to_sheets(gc, data, title, sheetname):
     """
     Add a timestamp in the first row then:
-
     Write the data in "data" to a google sheet named "title" on a new sheet
     "sheetname". If "sheetname" exists an error will be thrown.
-
     Parameters
     ----------
     gc : gspread.authorize
@@ -66,6 +63,51 @@ def write_to_sheets(gc, data, title, sheetname):
 
     # add header row
     wks.insert_row(data.columns.tolist(), index=1)
+
+
+def write_df(wks, df, row, col):
+    """Write a pd.DataFrame to a google sheets sheet
+
+    Parameters
+    ----------
+    wks : gspread worksheet
+        a gspreadworksheet
+    df : pd.DataFrame
+    row : int
+        row to put header of df (indexed from 0)
+    col : int
+        col to put first row of df (indexed from 0)
+    """
+
+    # header row
+    for j, col_name in enumerate(df.columns):
+        wks.update_cell(row+1, col+j+1, col_name)
+
+    # data
+    for i, row_of_data in df.iterrows():
+        for j, col_name in enumerate(df.columns):
+            wks.update_cell(row+2+i, col+j+1, row_of_data[j])
+
+
+def create_compare_report(gc, data, title, sheetname, blank_cols=None):
+
+    cols = max(len(data[0].columns), len(data[1].columns))
+    rows = len(data[0]) + len(data[1]) + 3
+
+    wb = gc.open(title)
+    wb.add_worksheet(title=sheetname, rows=rows, cols=cols)
+    wks = wb.worksheet(sheetname)
+
+    current_row = 0
+    for i, d in enumerate(data):
+
+        if blank_cols:
+            col = blank_cols[i]
+        else:
+            col = 0
+
+        write_df(wks, d, row=current_row, col=col)
+        current_row += len(d) + 2
 
 
 def clean_sheets(gc, title, max_sheets):
