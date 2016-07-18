@@ -121,9 +121,9 @@ def get_data_and_report(keen_client, gdrive_client, keen_timeframe, aol_timefram
     try_ = 1
     while ((not successful) & (try_ < max_trys)) :
         try:
-            aol_yesterday_df = get_aol_data(aol_credentials['username'], aol_credentials['password'], aol_timeframe, "firefox")
+            aol_df = get_aol_data(aol_credentials['username'], aol_credentials['password'], aol_timeframe, "firefox")
         except:
-            aol_yesterday_df = get_aol_data(aol_credentials['username'], aol_credentials['password'], aol_timeframe, "firefox")
+            aol_df = get_aol_data(aol_credentials['username'], aol_credentials['password'], aol_timeframe, "firefox")
         finally:
             successful = True
 
