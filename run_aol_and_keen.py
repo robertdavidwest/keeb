@@ -122,7 +122,9 @@ def get_data_and_report(keen_client, gdrive_client, keen_timeframe, aol_timefram
     while ((not successful) & (try_ < max_trys)) :
         try:
             aol_df = get_aol_data(aol_credentials['username'], aol_credentials['password'], aol_timeframe, "firefox")
-        except:
+        except as e:
+            print "AOL Data Grab attempt {} failed. Here is the exception message:".format(try_)
+            print e
             aol_df = get_aol_data(aol_credentials['username'], aol_credentials['password'], aol_timeframe, "firefox")
         finally:
             successful = True
@@ -147,8 +149,8 @@ def get_data_and_report(keen_client, gdrive_client, keen_timeframe, aol_timefram
             'campaign': 'Campaign',
             'prerollplayaol': 'AOL Preroll Play',
             'prerollplaykeen': 'Keen Preroll Play',
-            'contentplaykeen': 'Keen Content Play',
             'contentplayaol': 'AOL Content Play',
+            'contentplaykeen': 'Keen Content Play'
         })
 
         # drop total row before aggregation up
@@ -158,16 +160,16 @@ def get_data_and_report(keen_client, gdrive_client, keen_timeframe, aol_timefram
         df_campaign_sum = df.groupby('Campaign', as_index=False).agg({
             'AOL Preroll Play': 'sum',
             'Keen Preroll Play': 'sum',
-            'Keen Content Play': 'sum',
             'AOL Content Play': 'sum',
+            'Keen Content Play': 'sum'
         })
 
         df_campaign_sum = df_campaign_sum[[
             'Campaign',
             'AOL Preroll Play',
             'Keen Preroll Play',
-            'Keen Content Play',
             'AOL Content Play',
+            'Keen Content Play'
         ]]
 
         df_campaign_sum = df_campaign_sum.fillna('-')
