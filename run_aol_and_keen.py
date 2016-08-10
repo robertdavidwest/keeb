@@ -37,7 +37,7 @@ def get_keen_client(credentials_key):
     return client
 
 
-def get_keen_data(client, timeframe, timezone):
+def get_keen_data(client, timeframe, timezone, index):
     """
     Count both 'prerollplay' and 'contentplay' from keen, aggregated by
     campaign and refer
@@ -66,22 +66,22 @@ def get_keen_data(client, timeframe, timezone):
     prerolls = client.count(event_collection='prerollplay',
                             timezone=timezone,
                             timeframe=timeframe,
-                            group_by=['vidid', 'campaign'])
+                            group_by=index)
     prerolls = pd.DataFrame(prerolls)
     prerolls.rename(columns={'result': 'prerollplay'}, inplace=True)
 
     content = client.count(event_collection='contentplay',
                            timezone=timezone,
                            timeframe=timeframe,
-                            group_by=['vidid', 'campaign'])
+                            group_by=index)
     content = pd.DataFrame(content)
     content.rename(columns={'result': 'contentplay'}, inplace=True)
 
     results = pd.merge(prerolls,
                        content,
-                       on=['vidid', 'campaign'],
+                       on=index,
                        how='outer')
-    results = results.sort_values(['vidid'], ascending=False)
+    results = results.sort_values(index, ascending=False)
     results.reset_index(inplace=True, drop=True)
     results.fillna(0, inplace=True)
 
@@ -95,7 +95,7 @@ def get_keen_data(client, timeframe, timezone):
     return results
 
 
-def get_data_and_report(keen_client, gdrive_client, keen_timeframe, aol_timeframe, sheetname, title):
+def get_data(keen_client, gdrive_client, keen_timeframe, aol_timeframe):
     """
     Get data from keen api and from AOL then merge the datasets
     and right the results to googlesheets
@@ -122,61 +122,85 @@ def get_data_and_report(keen_client, gdrive_client, keen_timeframe, aol_timefram
     while ((not successful) & (try_ < max_trys)) :
         try:
             aol_df = get_aol_data(aol_credentials['username'], aol_credentials['password'], aol_timeframe, "firefox")
+            successful = True
         except Exception as e:
             print "AOL Data Grab attempt {} failed. Here is the exception message:".format(try_)
             print e
-            aol_df = get_aol_data(aol_credentials['username'], aol_credentials['password'], aol_timeframe, "firefox")
-        finally:
-            successful = True
 
         try_ += 1
 
     if successful:
-        keen_df = get_keen_data(keen_client, timeframe=keen_timeframe, timezone=timezone_str)
+        keen_df = get_keen_data(keen_client, timeframe=keen_timeframe, timezone=timezone_str, index=['vidid', 'campaign'])
+        keen_vendor_df = get_keen_data(keen_client, timeframe=keen_timeframe, timezone=timezone_str, index=['campaign', 'refer'])
+        keen_vendor_df = keen_vendor_df.rename(columns={
+            'campaign': 'Campaign',
+            'refer': 'Referer',
+            'prerollplay': 'Keen Preroll',
+            'contentplay': 'Keen Content',
+        })
 
         df = pd.merge(keen_df, aol_df,
                       on='vidid', how='outer', suffixes=('keen', 'aol'))
 
+        df['Referer'] = 'All'
+        df['AOL Performance'] = df['prerollplayaol']/df['contentplayaol']
+        df['Keen Performance'] = df['prerollplaykeen']/df['contentplaykeen']
+
         df = df[[
-            'vidid', 'Video title', 'campaign',
-            'prerollplayaol', 'prerollplaykeen',
-            'contentplayaol', 'contentplaykeen'
+            'vidid', 'Video title', 'campaign', 'Referer',
+            'prerollplayaol', 'contentplayaol', 'AOL Performance',
+            'prerollplaykeen', 'contentplaykeen', 'Keen Performance'
         ]]
 
         df = df.rename(columns={
             'vidid': 'Video ID',
             'Video title': 'Video Title',
             'campaign': 'Campaign',
-            'prerollplayaol': 'AOL Preroll Play',
-            'prerollplaykeen': 'Keen Preroll Play',
-            'contentplayaol': 'AOL Content Play',
-            'contentplaykeen': 'Keen Content Play'
+            'prerollplayaol': 'AOL Preroll',
+            'contentplayaol': 'AOL Content',
+            'prerollplaykeen': 'Keen Preroll',
+            'contentplaykeen': 'Keen Content'
         })
 
         # drop total row before aggregation up
         msk = df['Video Title'] != "Total"
         df = df[msk]
+        df['Variance Preroll'] = df['AOL Preroll']/df['Keen Preroll']
+        df['Variance Content'] = df['AOL Content']/df['Keen Content']
+
 
         df_campaign_sum = df.groupby('Campaign', as_index=False).agg({
-            'AOL Preroll Play': 'sum',
-            'Keen Preroll Play': 'sum',
-            'AOL Content Play': 'sum',
-            'Keen Content Play': 'sum'
+            'AOL Preroll': 'sum',
+            'AOL Content': 'sum',
+            'Keen Preroll': 'sum',
+            'Keen Content': 'sum'
         })
 
+        df_campaign_sum['Referer'] = 'All'
+        df_campaign_sum = df_campaign_sum.append(keen_vendor_df)
+        df_campaign_sum['AOL Performance'] = df_campaign_sum['AOL Preroll']/df_campaign_sum['AOL Content']
+        df_campaign_sum['Keen Performance'] = df_campaign_sum['Keen Preroll']/df_campaign_sum['Keen Content']
+
         df_campaign_sum = df_campaign_sum[[
-            'Campaign',
-            'AOL Preroll Play',
-            'Keen Preroll Play',
-            'AOL Content Play',
-            'Keen Content Play'
+            'Campaign', 'Referer',
+            'AOL Preroll',
+            'AOL Content',
+            'AOL Performance',
+            'Keen Preroll',
+            'Keen Content',
+            'Keen Performance'
         ]]
+
+        df_campaign_sum['Variance Preroll'] = df_campaign_sum['AOL Preroll']/df_campaign_sum['Keen Preroll']
+        df_campaign_sum['Variance Content'] = df_campaign_sum['AOL Content']/df_campaign_sum['Keen Content']
 
         df_campaign_sum = df_campaign_sum.fillna('-')
         df = df.fillna('-')
 
-        create_compare_report(gdrive_client, [df_campaign_sum, df],
-                              title, sheetname, blank_cols=[2, 0])
+        return df_campaign_sum, df
+
+        #create_compare_report(gdrive_client, [df_campaign_sum, df],
+        #                      title, sheetname, blank_cols=[2, 0])
     else:
         err_msg = 'Error Scraping AOL Platform. Please try again later'
 
@@ -219,16 +243,24 @@ if __name__ == '__main__':
     # results from yesterday
     keen_timeframe = 'previous_1_days'
     aol_timeframe = 'Yesterday'
-    sheetname = 'keen/aol-{} {}'.format(display_now, aol_timeframe)
-    get_data_and_report(keen_client, gdrive_client, keen_timeframe, aol_timeframe, sheetname, title)
+    df_campaign_sum_yest, df_details_yest = get_data(keen_client, gdrive_client, keen_timeframe, aol_timeframe)
 
     # results this month
     # results from this month
     keen_timeframe = 'this_month'
     aol_timeframe = eastern_now.strftime("%B")
+    df_campaign_sum_mtd, df_details_mtd = get_data(keen_client, gdrive_client,  keen_timeframe, aol_timeframe)
 
-    sheetname = 'keen/aol-{} {}'.format(display_now, aol_timeframe)
-    get_data_and_report(keen_client, gdrive_client,  keen_timeframe, aol_timeframe, sheetname, title)
+    # merge results from different time frames
+    df_campaign_sum = pd.merge(df_campaign_sum_mtd, df_campaign_sum_yest,
+                               on=['Campaign',	'Referer'],
+                               how='outer',
+                               suffixes=(' MTD', ' YEST'))
+    df_campaign_sum = df_campaign_sum.fillna('-')
+
+    # send to sheets
+    sheetname = 'keen/aol-{}'.format(display_now)
+    create_compare_report(gdrive_client, [df_campaign_sum, df_details_mtd], title, sheetname, blank_cols=[0, 6])
 
     # No more than 20 sheets in workbook. Older results are deleted.
     clean_sheets(gdrive_client, title, max_sheets=20)
