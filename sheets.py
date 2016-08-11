@@ -81,18 +81,24 @@ def write_df(wks, df, row, col):
 
     # header row
     for j, col_name in enumerate(df.columns):
-        wks.update_cell(row+1, col+j+1, col_name)
-
+        if 'AOL' in col_name:
+            wks.update_cell(row+1, col+j+1, 'AOL')
+            wks.update_cell(row+2, col+j+1, col_name.replace('AOL', ''))
+        elif 'Keen' in col_name:
+            wks.update_cell(row+1, col+j+1, 'Keen')
+            wks.update_cell(row+2, col+j+1, col_name.replace('Keen', ''))
+        else:
+            wks.update_cell(row+2, col+j+1, col_name)
     # data
     for i, row_of_data in df.iterrows():
         for j, col_name in enumerate(df.columns):
-            wks.update_cell(row+2+i, col+j+1, row_of_data[j])
+            wks.update_cell(row+3+i, col+j+1, row_of_data[j])
 
 
 def create_compare_report(gc, data, title, sheetname, blank_cols=None):
 
     cols = max(len(data[0].columns), len(data[1].columns))
-    rows = len(data[0]) + len(data[1]) + 3
+    rows = len(data[0]) + len(data[1]) + 3 + 2 # 2 additonal rows to split out the header columns
 
     wb = gc.open(title)
     wb.add_worksheet(title=sheetname, rows=rows, cols=cols)

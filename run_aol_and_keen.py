@@ -253,14 +253,20 @@ if __name__ == '__main__':
 
     # merge results from different time frames
     df_campaign_sum = pd.merge(df_campaign_sum_mtd, df_campaign_sum_yest,
-                               on=['Campaign',	'Referer'],
+                               on=['Campaign', 'Referer'],
                                how='outer',
                                suffixes=(' MTD', ' YEST'))
     df_campaign_sum = df_campaign_sum.fillna('-')
 
+    df_details = pd.merge(df_details_mtd, df_details_yest,
+                          on=['Video ID', 'Video Title', 'Campaign', 'Referer'],
+                          how='outer',
+                          suffixes=(' MTD', ' YEST'))
+    df_details = df_details.fillna('-')
+
     # send to sheets
     sheetname = 'keen/aol-{}'.format(display_now)
-    create_compare_report(gdrive_client, [df_campaign_sum, df_details_mtd], title, sheetname, blank_cols=[0, 6])
+    create_compare_report(gdrive_client, [df_campaign_sum, df_details], title, sheetname, blank_cols=[2, 0])
 
     # No more than 20 sheets in workbook. Older results are deleted.
     clean_sheets(gdrive_client, title, max_sheets=20)
