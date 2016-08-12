@@ -113,7 +113,7 @@ def create_compare_report(gc, data, title, sheetname, blank_cols=None):
             col = 0
 
         write_df(wks, d, row=current_row, col=col)
-        current_row += len(d) + 2
+        current_row += len(d) + 2 + 1
 
 
 def clean_sheets(gc, title, max_sheets):

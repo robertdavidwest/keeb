@@ -138,6 +138,8 @@ def get_data(keen_client, gdrive_client, keen_timeframe, aol_timeframe):
             'prerollplay': 'Keen Preroll',
             'contentplay': 'Keen Content',
         })
+        # make referer uppercase
+        keen_vendor_df['Referer'] = keen_vendor_df['Referer'].str.upper()
 
         df = pd.merge(keen_df, aol_df,
                       on='vidid', how='outer', suffixes=('keen', 'aol'))
@@ -257,6 +259,21 @@ if __name__ == '__main__':
                                how='outer',
                                suffixes=(' MTD', ' YEST'))
     df_campaign_sum = df_campaign_sum.fillna('-')
+
+    # in df_campaign_sum add blanks for missing referers to make data consistent
+    # shape
+    df['Referer_cat'] = pd.Categorical(
+        df['Referer'],
+        categories=['QR', 'TP', 'SB', 'O', 'SS', 'SS2'],
+        ordered=True
+    )
+    df_campaign_sum = df_campaign_sum.sort_values(['Campaign', 'Referer_cat'])
+    df_campaign_sum.drop(axis=1, labels='Referer_cat', inplace=True)
+
+    df_campaign_all_refs = pd.DataFrame()
+
+
+
 
     df_details = pd.merge(df_details_mtd, df_details_yest,
                           on=['Video ID', 'Video Title', 'Campaign', 'Referer'],
