@@ -1,4 +1,5 @@
 import keyring
+from copy import deepcopy
 import json
 import pandas as pd
 from datetime import datetime
@@ -241,7 +242,7 @@ if __name__ == '__main__':
 
     gdrive_client = get_gdrive_client(
         '/home/robertdavidwest/gdrive-keen-buzzworthy-aol.json')
-
+    '''
     # results from yesterday
     keen_timeframe = 'previous_1_days'
     aol_timeframe = 'Yesterday'
@@ -262,28 +263,49 @@ if __name__ == '__main__':
 
     # in df_campaign_sum add blanks for missing referers to make data consistent
     # shape
-    df['Referer_cat'] = pd.Categorical(
-        df['Referer'],
-        categories=['QR', 'TP', 'SB', 'O', 'SS', 'SS2'],
+    refer_cats = ['QR', 'TP', 'SB', 'O', 'SS', 'SS2']
+    df_campaign_sum['Referer_cat'] = pd.Categorical(
+        df_campaign_sum['Referer'],
+        categories=refer_cats,
         ordered=True
     )
     df_campaign_sum = df_campaign_sum.sort_values(['Campaign', 'Referer_cat'])
     df_campaign_sum.drop(axis=1, labels='Referer_cat', inplace=True)
+    '''
+    refer_cats = ['QR', 'TP', 'SB', 'O', 'SS', 'SS2']
+    df_campaign_sum = pd.read_csv('temp.csv')
+    df_campaign_sum = df_campaign_sum.drop(axis=1, labels='Unnamed: 0')
 
     df_campaign_all_refs = pd.DataFrame()
+    for _, row in df_campaign_sum.query("Referer != 'All'").iterrows():
+        for cat in refer_cats:
+            if row['Referer'] != cat:
+                blank_row = deepcopy(row)
+                blank_row[:] = '-'
+                blank_row['Referer'] = cat
+                blank_frame = pd.DataFrame(blank_row).transpose()
+                df_campaign_all_refs = df_campaign_all_refs.append(blank_frame)
+
+        row_df = pd.DataFrame(row).transpose()
+        df_campaign_all_refs = df_campaign_all_refs.append(row_df)
 
 
+    df_campaign_all_refs = df_campaign_sum.query("Referer == 'All'").append(df_campaign_all_refs)
 
 
+    df_campaign_all_refs.to_csv('check.csv')
+    '''
     df_details = pd.merge(df_details_mtd, df_details_yest,
                           on=['Video ID', 'Video Title', 'Campaign', 'Referer'],
                           how='outer',
                           suffixes=(' MTD', ' YEST'))
     df_details = df_details.fillna('-')
-
+    '''
     # send to sheets
-    sheetname = 'keen/aol-{}'.format(display_now)
-    create_compare_report(gdrive_client, [df_campaign_sum, df_details], title, sheetname, blank_cols=[2, 0])
+    #sheetname = 'keen/aol-{}'.format(display_now)
+    sheetname = 'test'
+    #create_compare_report(gdrive_client, [df_campaign_sum, df_details], title, sheetname, blank_cols=[2, 0])
+    #create_compare_report(gdrive_client, [df_campaign_all_refs, df_campaign_all_refs], title, sheetname, blank_cols=[0, 0])
 
     # No more than 20 sheets in workbook. Older results are deleted.
     clean_sheets(gdrive_client, title, max_sheets=20)
