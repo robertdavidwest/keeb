@@ -211,8 +211,11 @@ def get_data(keen_client, gdrive_client, keen_timeframe, aol_timeframe):
             'ErrReport': [err_msg]
 
         })
-        create_compare_report(gdrive_client, [df],
-                              title, sheetname, blank_cols=[0])
+
+        return df, 'err'
+
+        #create_compare_report(gdrive_client, [df],
+        #                      title, sheetname, blank_cols=[0])
 
 
 if __name__ == '__main__':
@@ -254,40 +257,47 @@ if __name__ == '__main__':
     aol_timeframe = eastern_now.strftime("%B")
     df_campaign_sum_mtd, df_details_mtd = get_data(keen_client, gdrive_client,  keen_timeframe, aol_timeframe)
 
-    # merge results from different time frames
-    df_campaign_sum = pd.merge(df_campaign_sum_mtd, df_campaign_sum_yest,
-                               on=['Campaign', 'Referer'],
-                               how='outer',
-                               suffixes=(' MTD', ' YEST'))
-    df_campaign_sum = df_campaign_sum.fillna('-')
+    if ((def_details_yest != 'err') and (def_details_mtd != 'err')):
 
-    # in df_campaign_sum add blanks for missing referers to make data consistent
-    # shape
-    refer_cats = ['QR', 'TP', 'SB', 'O', 'SS', 'SS2']
-    df_campaign_sum['Referer_cat'] = pd.Categorical(
-        df_campaign_sum['Referer'],
-        categories=refer_cats,
-        ordered=True
-    )
-    df_campaign_sum = df_campaign_sum.sort_values(['Campaign', 'Referer_cat'])
-    df_campaign_sum.drop(axis=1, labels='Referer_cat', inplace=True)
+        # merge results from different time frames
+        df_campaign_sum = pd.merge(df_campaign_sum_mtd, df_campaign_sum_yest,
+                                   on=['Campaign', 'Referer'],
+                                   how='outer',
+                                   suffixes=(' MTD', ' YEST'))
+        df_campaign_sum = df_campaign_sum.fillna('-')
 
+        # in df_campaign_sum add blanks for missing referers to make data consistent
+        # shape
+        refer_cats = ['QR', 'TP', 'SB', 'O', 'SS', 'SS2']
+        df_campaign_sum['Referer_cat'] = pd.Categorical(
+            df_campaign_sum['Referer'],
+            categories=refer_cats,
+            ordered=True
+        )
+        df_campaign_sum = df_campaign_sum.sort_values(['Campaign', 'Referer_cat'])
+        df_campaign_sum.drop(axis=1, labels='Referer_cat', inplace=True)
 
-    # make dataframe with all compaign/refer combos to create blank rows
-    campaigns = df_campaign_sum['Campaign'].drop_duplicates().tolist()
-    df_all_refs = pd.DataFrame([(i,j) for i, j in itertools.product(campaigns, refer_cats)], columns=['Campaign', 'Referer'])
-    df_all_refs = pd.merge(df_all_refs, df_campaign_sum.query("Referer != 'All'"), on=['Campaign', 'Referer'], how='outer')
-    df_all_refs = df_campaign_sum.query("Referer == 'All'").append(df_all_refs)
+        # make dataframe with all compaign/refer combos to create blank rows
+        campaigns = df_campaign_sum['Campaign'].drop_duplicates().tolist()
+        df_all_refs = pd.DataFrame([(i,j) for i, j in itertools.product(campaigns, refer_cats)], columns=['Campaign', 'Referer'])
+        df_all_refs = pd.merge(df_all_refs, df_campaign_sum.query("Referer != 'All'"), on=['Campaign', 'Referer'], how='outer')
+        df_all_refs = df_campaign_sum.query("Referer == 'All'").append(df_all_refs)
+        df_all_refs = df_all_refs.fillna('-')
+        df_all_refs = df_all_refs.reset_index(drop=True)
 
-    df_details = pd.merge(df_details_mtd, df_details_yest,
-                          on=['Video ID', 'Video Title', 'Campaign', 'Referer'],
-                          how='outer',
-                          suffixes=(' MTD', ' YEST'))
-    df_details = df_details.fillna('-')
+        df_details = pd.merge(df_details_mtd, df_details_yest,
+                              on=['Video ID', 'Video Title', 'Campaign', 'Referer'],
+                              how='outer',
+                              suffixes=(' MTD', ' YEST'))
+        df_details = df_details.fillna('-')
 
-    # send to sheets
-    sheetname = 'keen/aol-{}'.format(display_now)
-    create_compare_report(gdrive_client, [df_campaign_sum, df_details], title, sheetname, blank_cols=[2, 0])
+        # send to sheets
+        sheetname = 'keen/aol-{}'.format(display_now)
+        create_compare_report(gdrive_client, [df_all_refs, df_details], title, sheetname, blank_cols=[2, 0])
+
+    else:
+        sheetname = 'keen/aol-{}'.format(display_now)
+        create_compare_report(gdrive_client, [df_campaign_sum_yest], title, sheetname, blank_cols=[0])
 
     # No more than 20 sheets in workbook. Older results are deleted.
     clean_sheets(gdrive_client, title, max_sheets=20)
