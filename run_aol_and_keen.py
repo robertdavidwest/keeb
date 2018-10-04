@@ -229,9 +229,9 @@ if __name__ == '__main__':
     local_now =  datetime.now()
     display_now = eastern_now.ctime()
 
-    if eastern_now.day != local_now.day:
-        raise AssertionError("Changing to Eastern time in sheetname will show"
-                             "incorrect day")
+    #if eastern_now.day != local_now.day:
+    #    raise AssertionError("Changing to Eastern time in sheetname will show"
+    #                         "incorrect day")
 
     title = "Buzzworthy - Keen - AOL - Compare Plays"
 
