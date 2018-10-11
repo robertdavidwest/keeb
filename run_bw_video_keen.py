@@ -120,7 +120,7 @@ def main():
     this_now = datetime.now(tz)
     local_now =  datetime.now()
     pacific_now = datetime.now(
-            timezone("US/Pacific") # keen reports are pacific
+            timezone("US/Pacific")) # keen reports are pacific
     display_now = this_now.ctime()
 
     if this_now.day != local_now.day:
@@ -130,7 +130,7 @@ def main():
     # Yesterday report 
     report_name = "Yesterday"
     timeframe = "previous_day"
-    sheetname = '{} {} {}'.format(display_now, timezone_short, report_name)
+    sheetname = 'runtime: {} {} report: {}'.format(display_now, timezone_short, report_name)
     report = get_keen_report(keen_client, gdrive_client, timeframe) 
     write_to_sheets(gdrive_client, report, title, sheetname)
 
@@ -141,10 +141,13 @@ def main():
     if n == 0:
         timeframe = 'previous_month'
     else:
-        timeframe = 'previous_{}_days' % n
-    sheetname = '{} {} {}'.format(display_now, timezone_short, report_name)
+        timeframe = 'previous_{}_days'.format(n)
+    sheetname = 'runtime: {} {} report: {}'.format(display_now, timezone_short, report_name)
     report = get_keen_report(keen_client, gdrive_client, timeframe) 
     write_to_sheets(gdrive_client, report, title, sheetname)
+
+    # No more than 20 sheets in workbook. Older results are deleted.
+    clean_sheets(gdrive_client, title, max_sheets=20)
 
 
 if __name__ == '__main__':
