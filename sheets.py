@@ -65,6 +65,14 @@ def write_to_sheets(gc, data, title, sheetname):
     wks.insert_row(data.columns.tolist(), index=1)
 
 
+def read_sheets(gc, title, sheet=None):
+    sheets = gc.open(title).worksheets()
+    if sheet:
+        sheets = [s for s in sheets if s.title == sheet] 
+    return {s.title: pd.DataFrame(s.get_all_records())
+           for s in sheets}
+
+
 def write_df(wks, df, row, col):
     """Write a pd.DataFrame to a google sheets sheet
 
