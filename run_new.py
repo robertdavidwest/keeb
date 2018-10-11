@@ -4,7 +4,7 @@ from run import get_keen_client
 
 def get_keen_data(client, timeframe, on, event):
     result = client.count(event_collection=event, timeframe=timeframe, group_by=on)
-    return pd.DataFrame(result)
+    return pd.DataFrame(result).rename(columns={'result': event})
 
 
 def get_data_report(client, timeframe):
@@ -15,14 +15,19 @@ def get_data_report(client, timeframe):
     datas = [get_keen_data(client, timeframe, on, e) for e in events]
     merge = lambda x, y: pd.merge(x, y,
                                   on=on,
-                                  how='outer',
-                                  validate='1:1')
-    data = reduce(datas, merge)
+                                  how='outer')
+                                  #validate='1:1')
+
+    data = reduce(merge, datas)
+
+    data = data.sort_values(['refer', 'campaign'])
+    data = data.rename(columns={'refer': 'Partner',
+                                'campaign': 'KEEN NAME'})
     return data
 
 
 def main():
-    timeframe = 'yesterday'
+    timeframe = 'this_month'
     keen_client = get_keen_client(
         '/home/robertdavidwest/keen-buzzworthy-aol.json')
 
@@ -32,5 +37,8 @@ def main():
 
 if __name__ == '__main__':
     result = main()
+    check = result[result['Partner'] == 'irsr']
+    print(check.head())
+
 
 
