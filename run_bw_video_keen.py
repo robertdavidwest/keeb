@@ -8,7 +8,12 @@ from run import get_keen_client, write_to_sheets
 
 def get_keen_table(client, timeframe, on, event):
     result = client.count(event_collection=event, timeframe=timeframe, group_by=on)
-    return pd.DataFrame(result).rename(columns={'result': event})
+    if not result:
+        empty = {c: [] for c in on}
+        empty.update({event: []})
+        return pd.DataFrame(empty) 
+    else:
+        return pd.DataFrame(result).rename(columns={'result': event})
 
 
 def get_all_keen_data(client, timeframe):
@@ -126,14 +131,14 @@ def main():
     if this_now.day != local_now.day:
         raise AssertionError("Changing timezone " \
                 "in sheetname will show incorrect day")
-
+    
     # Yesterday report 
     report_name = "Yesterday"
     timeframe = "previous_day"
     sheetname = 'runtime: {} {} report: {}'.format(display_now, timezone_short, report_name)
     report = get_keen_report(keen_client, gdrive_client, timeframe) 
     write_to_sheets(gdrive_client, report, title, sheetname)
-
+    
     # Report Month to date excluding today
     report_name =  'MTD(not-today)'
     day = pacific_now.day
