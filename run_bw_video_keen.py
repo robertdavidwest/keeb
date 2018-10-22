@@ -6,8 +6,11 @@ from sheets import get_gdrive_client, write_to_sheets, clean_sheets, read_sheets
 from run import get_keen_client, write_to_sheets
 
 
-def get_keen_table(client, timeframe, on, event):
-    result = client.count(event_collection=event, timeframe=timeframe, group_by=on)
+def get_keen_table(client, timeframe, timezone, on, event):
+    result = client.count(event_collection=event, 
+                          timeframe=timeframe, 
+                          timezone=timezone,
+                          group_by=on)
     if not result:
         empty = {c: [] for c in on}
         empty.update({event: []})
@@ -16,12 +19,12 @@ def get_keen_table(client, timeframe, on, event):
         return pd.DataFrame(result).rename(columns={'result': event})
 
 
-def get_all_keen_data(client, timeframe):
+def get_all_keen_data(client, timeframe, tz):
     on = ['program', 'campaign', 'refer']
     events = ['pageviewevent', 'playerload', 'prerollplay', 'prerollend',
               'contentplay', 'cookiesdisabled', 'errorpage', 'halfevent',
               'rewardevent']
-    datas = [get_keen_table(client, timeframe, on, e) for e in events]
+    datas = [get_keen_table(client, timeframe, tz, on, e) for e in events]
     merge = lambda x, y: pd.merge(x, y,
                                   on=on,
                                   how='outer')
@@ -29,7 +32,7 @@ def get_all_keen_data(client, timeframe):
 
     data = reduce(merge, datas)
 
-    data = data.sort_values(['refer', 'campaign'])
+    data = data.sort_values(on)
     return data
 
 
@@ -103,8 +106,8 @@ def reorder_cols(df):
     return df[final_order]
 
 
-def get_keen_report(kc, gc, timeframe):
-    data = get_all_keen_data(kc, timeframe)
+def get_keen_report(kc, gc, timeframe, tz):
+    data = get_all_keen_data(kc, timeframe, tz)
     data = add_reference_rates(gc, data)
     data = add_metrics(data)
     data = reorder_cols(data)
@@ -118,9 +121,9 @@ def main():
     gdrive_client = get_gdrive_client(
                  '/home/robertdavidwest/gdrive-keen-buzzworthy-aol.json')
     
-    thistimezone = "US/Eastern"
-    timezone_short = "EST"
-    tz = timezone('US/Eastern')
+    tz_str = "US/Pacific"
+    timezone_short = "PT"
+    tz = timezone(tz_str)
 
     this_now = datetime.now(tz)
     local_now =  datetime.now()
@@ -136,7 +139,7 @@ def main():
     report_name = "Yesterday"
     timeframe = "previous_day"
     sheetname = 'runtime: {} {} report: {}'.format(display_now, timezone_short, report_name)
-    report = get_keen_report(keen_client, gdrive_client, timeframe) 
+    report = get_keen_report(keen_client, gdrive_client, timeframe, tz_str)
     write_to_sheets(gdrive_client, report, title, sheetname)
     
     # Report Month to date excluding today
@@ -148,7 +151,7 @@ def main():
     else:
         timeframe = 'previous_{}_days'.format(n)
     sheetname = 'runtime: {} {} report: {}'.format(display_now, timezone_short, report_name)
-    report = get_keen_report(keen_client, gdrive_client, timeframe) 
+    report = get_keen_report(keen_client, gdrive_client, timeframe, tz_str)
     write_to_sheets(gdrive_client, report, title, sheetname)
 
     # No more than 20 sheets in workbook. Older results are deleted.
