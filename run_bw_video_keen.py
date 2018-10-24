@@ -6,10 +6,11 @@ from sheets import get_gdrive_client, write_to_sheets, clean_sheets, read_sheets
 from run import get_keen_client, write_to_sheets
 
 
-def get_keen_table(client, timeframe, timezone, on, event):
+def get_keen_table(client, timeframe, timezone, on, event, filters):
     result = client.count(event_collection=event, 
                           timeframe=timeframe, 
                           timezone=timezone,
+                          filters=filters,
                           group_by=on)
     if not result:
         empty = {c: [] for c in on}
@@ -19,12 +20,12 @@ def get_keen_table(client, timeframe, timezone, on, event):
         return pd.DataFrame(result).rename(columns={'result': event})
 
 
-def get_all_keen_data(client, timeframe, tz):
+def get_all_keen_data(client, timeframe, tz, filters=None):
     on = ['program', 'campaign', 'refer']
     events = ['pageviewevent', 'playerload', 'prerollplay', 'prerollend',
               'contentplay', 'cookiesdisabled', 'errorpage', 'halfevent',
               'rewardevent']
-    datas = [get_keen_table(client, timeframe, tz, on, e) for e in events]
+    datas = [get_keen_table(client, timeframe, tz, on, e, filters) for e in events]
     merge = lambda x, y: pd.merge(x, y,
                                   on=on,
                                   how='outer')
@@ -50,6 +51,24 @@ def add_reference_rates(gc, data):
                      how='left')
     return data
 
+
+def apply_operator_map(key):
+    operator_map = {
+            "Equal to": "eq",
+            "Not Equal to": "ne"}
+    return operator_map.get(key, key)
+
+
+def get_filters(gc):
+    filters_title = "BW-Video-Keen-Key"
+    df_filter = read_sheets(gc, filters_title, sheet="FILTERS")
+    df_filter = df_filter.rename(columns={
+        "FilterVariable": "property_name",
+        "Formula": "operator",
+        "Value": "property_value"})
+    df_filter["operator"] = df_filter.operator.map(apply_operator_map)
+    return df_filter.to_dict("records")
+    
 
 def add_metrics(df):
     df['preroll/playerload'] = df['prerollplay']/df['playerload']
@@ -107,7 +126,8 @@ def reorder_cols(df):
 
 
 def get_keen_report(kc, gc, timeframe, tz):
-    data = get_all_keen_data(kc, timeframe, tz)
+    filters = get_filters(gc)
+    data = get_all_keen_data(kc, timeframe, tz, filters)
     data = add_reference_rates(gc, data)
     data = add_metrics(data)
     data = reorder_cols(data)

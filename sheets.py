@@ -68,7 +68,13 @@ def write_to_sheets(gc, data, title, sheetname):
 def read_sheets(gc, title, sheet=None):
     sheets = gc.open(title).worksheets()
     if sheet:
-        sheets = [s for s in sheets if s.title == sheet] 
+        result = [pd.DataFrame(s.get_all_records()) 
+                for s in sheets if s.title == sheet]
+        if len(result) > 0:
+            return result[0]
+        else:
+            return None
+            
     return {s.title: pd.DataFrame(s.get_all_records())
            for s in sheets}
 
