@@ -7,15 +7,15 @@ from run import get_keen_client, write_to_sheets
 
 
 def get_keen_table(client, timeframe, timezone, on, event, filters):
-    result = client.count(event_collection=event, 
-                          timeframe=timeframe, 
+    result = client.count(event_collection=event,
+                          timeframe=timeframe,
                           timezone=timezone,
                           filters=filters,
                           group_by=on)
     if not result:
         empty = {c: [] for c in on}
         empty.update({event: []})
-        return pd.DataFrame(empty) 
+        return pd.DataFrame(empty)
     else:
         return pd.DataFrame(result).rename(columns={'result': event})
 
@@ -42,12 +42,12 @@ def add_reference_rates(gc, data):
     ref_rates = read_sheets(gc, ref_rate_title)
     ref_rates = {k: df.replace("NULL", np.nan)
                  for k, df in ref_rates.iteritems()}
-        
+
     data = data.merge(ref_rates['REVENUE RATE'],
                       on='program', how='left')
 
     data = data.merge(ref_rates['COST RATE'],
-                     on=['campaign', 'refer'], 
+                     on=['campaign', 'refer'],
                      how='left')
     return data
 
@@ -68,7 +68,7 @@ def get_filters(gc):
         "Value": "property_value"})
     df_filter["operator"] = df_filter.operator.map(apply_operator_map)
     return df_filter.to_dict("records")
-    
+
 
 def add_metrics(df):
     df['preroll/playerload'] = df['prerollplay']/df['playerload']
@@ -79,14 +79,14 @@ def add_metrics(df):
     df['rewardevent_rate'] = df['rewardevent']/df['playerload']
 
     df['keen_rev'] = df['revenue_rate'] * df['prerollplay']
-    
+
     notnull = df.cost_event_variable.notnull()
     cost_event_variables = list(set(
         df.loc[notnull, 'cost_event_variable']))
     df['keen_cost'] = np.nan
     for v in cost_event_variables:
         idx = df['cost_event_variable'] == v
-        df.loc[idx, 'keen_cost'] = df.loc[idx, v] * df['cost_rate']
+        df.loc[idx, 'keen_cost'] = df.loc[idx, v] * df['cost_rate'] * df['cost_multiplier']
 
     df['keen_profit'] = df['keen_rev'] - df['keen_cost']
     df['keen_margin'] = df['keen_profit']/df['keen_cost']
@@ -115,6 +115,7 @@ def reorder_cols(df):
          'rewardevent_rate',
          'revenue_rate',
          'cost_rate',
+         'cost_multiplier',
          'cost_event_variable',
          'keen_rev',
          'keen_cost',
@@ -140,7 +141,7 @@ def main():
         '/home/robertdavidwest/keen-buzzworthy-aol.json')
     gdrive_client = get_gdrive_client(
                  '/home/robertdavidwest/gdrive-keen-buzzworthy-aol.json')
-    
+
     tz_str = "US/Pacific"
     timezone_short = "PT"
     tz = timezone(tz_str)
@@ -154,14 +155,14 @@ def main():
     if this_now.day != local_now.day:
         raise AssertionError("Changing timezone " \
                 "in sheetname will show incorrect day")
-    
-    # Yesterday report 
+
+    # Yesterday report
     report_name = "Yesterday"
     timeframe = "previous_day"
     sheetname = 'runtime: {} {} report: {}'.format(display_now, timezone_short, report_name)
     report = get_keen_report(keen_client, gdrive_client, timeframe, tz_str)
     write_to_sheets(gdrive_client, report, title, sheetname)
-    
+
     # Report Month to date excluding today
     report_name =  'MTD(not-today)'
     day = pacific_now.day
