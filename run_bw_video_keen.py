@@ -6,34 +6,35 @@ from sheets import get_gdrive_client, write_to_sheets, clean_sheets, read_sheets
 from run import get_keen_client, write_to_sheets
 
 
-def get_keen_table(client, timeframe, timezone, on, event, filters):
+def get_keen_table(client, timeframe, timezone, by, event, filters):
     result = client.count(event_collection=event,
                           timeframe=timeframe,
                           timezone=timezone,
                           filters=filters,
-                          group_by=on)
+                          group_by=by)
     if not result:
-        empty = {c: [] for c in on}
+        empty = {c: [] for c in by}
         empty.update({event: []})
         return pd.DataFrame(empty)
     else:
         return pd.DataFrame(result).rename(columns={'result': event})
 
 
-def get_all_keen_data(client, timeframe, tz, filters=None):
-    on = ['program', 'campaign', 'refer']
+def get_all_keen_data(client, timeframe, tz, filters=None, by=None):
+    if not by:
+        by = ['program', 'campaign', 'refer']
     events = ['pageviewevent', 'playerload', 'prerollplay', 'prerollend',
               'contentplay', 'cookiesdisabled', 'errorpage', 'halfevent',
               'rewardevent']
-    datas = [get_keen_table(client, timeframe, tz, on, e, filters) for e in events]
+    datas = [get_keen_table(client, timeframe, tz, by, e, filters) for e in events]
     merge = lambda x, y: pd.merge(x, y,
-                                  on=on,
+                                  on=by,
                                   how='outer')
                                   #validate='1:1')
 
     data = reduce(merge, datas)
 
-    data = data.sort_values(on)
+    data = data.sort_values(by)
     return data
 
 
@@ -126,9 +127,9 @@ def reorder_cols(df):
     return df[final_order]
 
 
-def get_keen_report(kc, gc, timeframe, tz):
+def get_keen_report(kc, gc, timeframe, tz, by=None):
     filters = get_filters(gc)
-    data = get_all_keen_data(kc, timeframe, tz, filters)
+    data = get_all_keen_data(kc, timeframe, tz, filters, by=by)
     data = add_reference_rates(gc, data)
     data = add_metrics(data)
     data = reorder_cols(data)
