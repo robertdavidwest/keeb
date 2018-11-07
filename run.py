@@ -5,7 +5,7 @@ from datetime import datetime
 from pytz import timezone
 
 from keen.client import KeenClient
-from selenium_aol import get_aol_data
+#from selenium_aol import get_aol_data
 from sheets import get_gdrive_client, write_to_sheets, clean_sheets
 
 
