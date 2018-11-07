@@ -1,6 +1,7 @@
 from pytz import timezone
 from datetime import datetime
 import json
+import pandas as pd
 from twilio.rest import Client
 from sheets import get_gdrive_client, read_sheets
 from run import get_keen_client
@@ -10,21 +11,40 @@ from run_bw_video_keen import get_keen_report
 def get_twilio_client(path):
     d = json.load(open(path, 'r'))
     return Client(d['account_sid'], d['auth_token'])
-    #message = client.messages.create(
-    #        body="dogsBollocks", to="+18573000720", from_="+13392090657")
 
 
-def get_alert_signals(gc):
+def get_twilio_numbers(path):
+    return json.load(open(path, 'r'))
+
+
+def send_sms(client, msg, twilio_numbers):
+    from_ = twilio_numbers['from'].replace("-","").replace(" ", "")
+    for to in twilio_numbers['to']:
+        print("sending alert msg {} to {}". format(msg, to))
+        client.messages.create(
+                body=msg, 
+                to=to.replace("-","").replace(" ", ""),
+                from_=from_)
+
+
+def get_alert_rules(gc):
     filters_title = "BW-Video-Keen-Key"
-    signals = read_sheets(gc, filters_title, sheet="ALERT-SIGNALS")
-    import ipdb; ipdb.set_trace()
+    return read_sheets(gc, filters_title, sheet="ALERT-RULES")
 
-    df_filter = df_filter.rename(columns={
-        "FilterVariable": "property_name",
-        "Formula": "operator",
-        "Value": "property_value"})
-    df_filter["operator"] = df_filter.operator.map(apply_operator_map)
-    return df_filter.to_dict("records")
+
+def make_alert_msg(alertName, campaigns):
+    return "'%s': check campaigns: '%s'" % (alertName, campaigns)
+
+
+def apply_alert_rules(data, rules):
+    alerts = []
+    for i, row in rules.iterrows():
+        check = pd.eval(row['formula'])
+        if check.any():
+            campaigns = list(set(data[check].campaign))
+            msg = make_alert_msg(row['alertName'], campaigns)
+            alerts.append(msg)
+    return alerts
 
 
 def main():
@@ -35,6 +55,8 @@ def main():
          'gdrive-keen-buzzworthy-aol.json')
     twilio_client = get_twilio_client(keydir +
         'twilio.json')
+    twilNumbers = get_twilio_numbers(keydir + 
+        'twilioNumbers.json')
 
     tz_str = "US/Pacific"
     timezone_short = "PT"
@@ -50,15 +72,15 @@ def main():
         raise AssertionError("Changing timezone " \
                 "in sheetname will show incorrect day")
 
-    # Yesterday report
+    # Today report
     report_name = "Today"
     timeframe = "this_day"
-    sheetname = 'runtime: {} {} report: {}'.format(display_now, timezone_short, report_name)
+    rules = get_alert_rules(gdrive_client)
     report = get_keen_report(keen_client, gdrive_client, timeframe, tz_str)
-    signals = get_alert_signals(gdrive_client)
-    alerts = check_for_alerts(report, signals)
-    if alerts:
-        send_sms(twilio_client, alerts)
+    alerts = apply_alert_rules(report, rules)
+    for a in alerts:
+        send_sms(twilio_client, a, twilNumbers)
+
 
 if __name__ == '__main__':
     main()
