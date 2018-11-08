@@ -22,7 +22,7 @@ def send_sms(client, msg, twilio_numbers):
     for to in twilio_numbers['to']:
         print("sending alert msg {} to {}". format(msg, to))
         client.messages.create(
-                body=msg, 
+                body=msg,
                 to=to.replace("-","").replace(" ", ""),
                 from_=from_)
 
@@ -55,7 +55,7 @@ def main():
          'gdrive-keen-buzzworthy-aol.json')
     twilio_client = get_twilio_client(keydir +
         'twilio.json')
-    twilNumbers = get_twilio_numbers(keydir + 
+    twilNumbers = get_twilio_numbers(keydir +
         'twilioNumbers.json')
 
     tz_str = "US/Pacific"
@@ -73,8 +73,7 @@ def main():
                 "in sheetname will show incorrect day")
 
     # Today report
-    report_name = "Today"
-    timeframe = "this_day"
+    timeframe = "previous_60_minutes"
     rules = get_alert_rules(gdrive_client)
     report = get_keen_report(keen_client, gdrive_client, timeframe, tz_str)
     alerts = apply_alert_rules(report, rules)
