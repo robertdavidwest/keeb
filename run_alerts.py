@@ -3,6 +3,8 @@ from datetime import datetime
 import json
 import pandas as pd
 from twilio.rest import Client
+import warnings
+
 from sheets import get_gdrive_client, read_sheets
 from run import get_keen_client
 from run_bw_video_keen import get_keen_report
@@ -44,6 +46,9 @@ def apply_alert_rules(data, rules):
             campaigns = list(set(data[check].campaign))
             msg = make_alert_msg(row['alertName'], campaigns)
             alerts.append(msg)
+
+    msg = "minimum preroll/playerload is: %s" % data['preroll/playerload'].min()
+    warnings.warn(msg)
     return alerts
 
 
@@ -58,28 +63,16 @@ def main():
     twilNumbers = get_twilio_numbers(keydir +
         'twilioNumbers.json')
 
+    # Check previous 60 minutes
     tz_str = "US/Pacific"
-    timezone_short = "PT"
-    tz = timezone(tz_str)
-
-    this_now = datetime.now(tz)
-    local_now =  datetime.now()
-    pacific_now = datetime.now(
-            timezone("US/Pacific")) # keen reports are pacific
-    display_now = this_now.ctime()
-
-    if this_now.day != local_now.day:
-        raise AssertionError("Changing timezone " \
-                "in sheetname will show incorrect day")
-
-    # Today report
     timeframe = "previous_60_minutes"
     rules = get_alert_rules(gdrive_client)
     report = get_keen_report(keen_client, gdrive_client, timeframe, tz_str)
     alerts = apply_alert_rules(report, rules)
     for a in alerts:
         send_sms(twilio_client, a, twilNumbers)
-
+    if not alerts:
+        print("no alerts")
 
 if __name__ == '__main__':
     main()
