@@ -2,12 +2,17 @@ from pytz import timezone
 from datetime import datetime
 import json
 import pandas as pd
+import numpy as np
 from twilio.rest import Client
 import warnings
+from time import time
 
 from sheets import get_gdrive_client, read_sheets
 from run import get_keen_client
 from run_bw_video_keen import get_keen_report
+
+
+KEEP_ALERT_TIME = 60*60 # seconds
 
 
 def get_twilio_client(path):
@@ -52,7 +57,34 @@ def apply_alert_rules(data, rules):
     return alerts
 
 
-def main():
+def check_alert_log(alerts, alert_log):
+    t = time()
+    if alert_log is None:
+        alert_log = pd.DataFrame({"msg": [], "time": []})
+
+    alerts = pd.DataFrame([{"msg": a} for a in alerts])
+    alerts['send'] = True
+    alerts['time'] = t
+
+    alert_check = pd.merge(
+        alert_log, 
+        alerts, 
+        on='msg', 
+        how='outer',
+        suffixes=['Prev', 'Now'])
+    
+    alert_check['time_passed'] = alert_check['timeNow'] - alert_check['timePrev']
+    idx = alert_check['time_passed'] < KEEP_ALERT_TIME
+    alert_check.loc[idx, 'send'] = False
+    alert_check["time"] = np.where(alert_check["send"], 
+        alert_check["timeNow"], alert_check["timePrev"])
+    idx2 = alert_check['send']==True
+    alerts_to_send = alert_check.loc[idx2, 'msg'].tolist()
+    alert_log = alert_check[["msg", "time"]]
+    return alerts_to_send, alert_log
+
+
+def main(alert_log=None):
     keydir = "/home/robertdavidwest/"
     keen_client = get_keen_client(keydir +
         'keen-buzzworthy-aol.json')
@@ -69,10 +101,18 @@ def main():
     rules = get_alert_rules(gdrive_client)
     report = get_keen_report(keen_client, gdrive_client, timeframe, tz_str)
     alerts = apply_alert_rules(report, rules)
-    for a in alerts:
-        send_sms(twilio_client, a, twilNumbers)
-    if not alerts:
+
+    if alerts:
+        alerts_to_send, alert_log = check_alert_log(alerts, alert_log)
+    else:
         print("no alerts")
+        alerts_to_send = []
+
+    for a in alerts_to_send:
+        send_sms(twilio_client, a, twilNumbers)
+
+    return alert_log
+
 
 if __name__ == '__main__':
     main()

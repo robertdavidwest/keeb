@@ -3,9 +3,11 @@ import warnings
 
 from run_alerts import main
 
-run_frequency = 60 # in seconds
+alert_log = None
+
+run_frequency = 60*5 # in seconds
 while True:
     warnings.warn("checking for alerts")
-    main()
+    alert_log = main(alert_log)
     warnings.warn("sleeping for %s seconds" % run_frequency)
     sleep(run_frequency)
