@@ -2,8 +2,9 @@ from pytz import timezone
 import pandas as pd
 import numpy as np
 from datetime import datetime
+import offline_sheets
 from sheets import get_gdrive_client, write_to_sheets, clean_sheets, read_sheets
-from run import get_keen_client, write_to_sheets
+from run import get_keen_client
 
 
 def get_keen_table(client, timeframe, timezone, by, event, filters):
@@ -38,9 +39,14 @@ def get_all_keen_data(client, timeframe, tz, filters=None, by=None):
     return data
 
 
-def add_reference_rates(gc, data):
+def add_reference_rates(gc, data, offline=None):
     ref_rate_title = "BW-Video-Keen-Key"
-    ref_rates = read_sheets(gc, ref_rate_title)
+
+    if offline:
+        ref_rates = offline_sheets.read_sheets(ref_rate_title)
+    else:
+        ref_rates = read_sheets(gc, ref_rate_title)
+
     ref_rates = {k: df.replace("NULL", np.nan)
                  for k, df in ref_rates.iteritems()}
 
@@ -60,9 +66,14 @@ def apply_operator_map(key):
     return operator_map.get(key, key)
 
 
-def get_filters(gc):
+def get_filters(gc, offline=None):
     filters_title = "BW-Video-Keen-Key"
-    df_filter = read_sheets(gc, filters_title, sheet="FILTERS")
+    sheet = "FILTERS"
+    if offline:
+        df_filter = offline_sheets.read_sheets(filters_title, sheet)
+    else:
+        df_filter = read_sheets(gc, filters_title, sheet)
+
     df_filter = df_filter.rename(columns={
         "FilterVariable": "property_name",
         "Formula": "operator",
@@ -127,10 +138,10 @@ def reorder_cols(df):
     return df[final_order]
 
 
-def get_keen_report(kc, gc, timeframe, tz, by=None):
-    filters = get_filters(gc)
+def get_keen_report(kc, gc, timeframe, tz, by=None, offline=None):
+    filters = get_filters(gc, offline)
     data = get_all_keen_data(kc, timeframe, tz, filters, by=by)
-    data = add_reference_rates(gc, data)
+    data = add_reference_rates(gc, data, offline)
     data = add_metrics(data)
     data = reorder_cols(data)
     return data
