@@ -58,6 +58,7 @@ def write_to_sheets(gc, data, title, sheetname):
     wks = wb.worksheet(sheetname)
 
     # add data
+    data = data.iloc[::-1]
     for i, row in data.iterrows():
         wks.insert_row(values=row.tolist(), index=1)
 
@@ -65,17 +66,23 @@ def write_to_sheets(gc, data, title, sheetname):
     wks.insert_row(data.columns.tolist(), index=1)
 
 
+def sheet_to_frame(s):
+    df = pd.DataFrame(s.get_all_records())
+    df = df[s.get_all_values()[0]]
+    return df
+
+
 def read_sheets(gc, title, sheet=None):
     sheets = gc.open(title).worksheets()
     if sheet:
-        result = [pd.DataFrame(s.get_all_records())
+        result = [sheet_to_frame(s)
                 for s in sheets if s.title == sheet]
         if len(result) > 0:
             return result[0]
         else:
             return None
 
-    return {s.title: pd.DataFrame(s.get_all_records())
+    return {s.title: sheet_to_frame(s)
            for s in sheets}
 
 
@@ -128,6 +135,14 @@ def create_compare_report(gc, data, title, sheetname, blank_cols=None):
 
         write_df(wks, d, row=current_row, col=col)
         current_row += len(d) + 2 + 1
+
+
+def delete_sheet(gc, title, sheetname):
+    wb = gc.open(title)
+    worksheets = wb.worksheets()
+    for ws in worksheets:
+        if ws.title == sheetname:
+            wb.del_worksheet(ws)
 
 
 def clean_sheets(gc, title, max_sheets):
