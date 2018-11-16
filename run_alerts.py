@@ -75,7 +75,7 @@ def _check_rule(data, rule):
 
 
 def apply_alert_rules(data, rules, exclusions):
-    data = data.merge(exclusions, on='campaign', how='left', validate='1:1')
+    data = data.merge(exclusions, on='campaign', how='left', validate='m:1')
     alerts = [_check_rule(data, rule) for _, rule in rules.iterrows()]
     alerts = [x for x in alerts if x]
     warn_msg = "minimum preroll/playerload is: %s" % data['preroll/playerload'].min()
@@ -111,10 +111,10 @@ def check_alert_log(alerts, alert_log):
 
 
 def main(alert_log=None):
-    offline = True
+    offline = False
 
-    #keydir = "/home/robertdavidwest/"
-    keydir = "/Users/rwest/"
+    keydir = "/home/robertdavidwest/"
+    #keydir = "/Users/rwest/"
     keen_client = get_keen_client(keydir +
         'keen-buzzworthy-aol.json')
 
