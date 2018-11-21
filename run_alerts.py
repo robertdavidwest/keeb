@@ -53,7 +53,8 @@ def get_alert_exclusions(gc, offline=None):
     alertNames = exclusions.columns.tolist()
     alertNames.remove("campaign")
     for column in alertNames:
-        exclusions['exclude-' + column] = exclusions['no-fill-alert'] == 'x'
+        exclusions['exclude-' + column] = exclusions[column] == 'x'
+    exclusions = exclusions.drop(axis=1, labels=alertNames)
     return exclusions
 
 
