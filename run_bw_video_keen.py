@@ -133,8 +133,10 @@ def reorder_cols(df):
          'keen_cost',
          'keen_profit',
          'keen_margin']
-    if set(df.columns) != set(final_order):
-        raise AssertionError("cols not accounted for")
+    #if set(df.columns) != set(final_order):
+    #    print('extra cols: %s' % (set(df.columns) - set(final_order)))
+    #    print('missing cols: %s' % (set(final_order) - set(df.columns)))
+    #    raise AssertionError("cols not accounted for")
     return df[final_order]
 
 
