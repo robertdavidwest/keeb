@@ -137,9 +137,9 @@ def main(alert_log=None):
     exclusions = get_alert_exclusions(gdrive_client, offline)
     report = get_keen_report(keen_client, gdrive_client, timeframe, tz_str,
             offline=offline)
-    alerts = apply_alert_rules(report, rules, exclusions)
     idx = [c is None for c in report.campaign.tolist()]
     report.loc[idx, 'campaign'] = 'None'
+    alerts = apply_alert_rules(report, rules, exclusions)
     if alerts:
         alerts_to_send, alert_log = check_alert_log(alerts, alert_log)
     else:
