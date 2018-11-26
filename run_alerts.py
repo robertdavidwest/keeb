@@ -49,10 +49,11 @@ def get_alert_exclusions(gc, offline=None):
         exclusions = offline_sheets.read_sheets(filters_title, sheet)
     else:
         exclusions = read_sheets(gc, filters_title, sheet)
-
+    
     alertNames = exclusions.columns.tolist()
     alertNames.remove("campaign")
     for column in alertNames:
+        exclusions[column] = exclusions[column].str.replace("X", "x")
         exclusions['exclude-' + column] = exclusions[column] == 'x'
     exclusions = exclusions.drop(axis=1, labels=alertNames)
     return exclusions
