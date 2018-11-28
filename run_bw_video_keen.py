@@ -5,6 +5,7 @@ from datetime import datetime
 import offline_sheets
 from sheets import get_gdrive_client, write_to_sheets, clean_sheets, read_sheets
 from run import get_keen_client
+from warnings import warn
 
 
 def get_keen_table(client, timeframe, timezone, by, event, filters):
@@ -56,6 +57,32 @@ def add_reference_rates(gc, data, offline=None):
     data = data.merge(ref_rates['COST RATE'],
                      on=['campaign', 'refer'],
                      how='left')
+    return data
+
+
+def add_encrave_costs(gc, data, report_type):
+    title = "Encrave Report Summaries"
+    encrave_costs = read_sheets(gc, title, report_type)
+    encrave_costs = encrave_costs[['campaign', 'Cost', 'ReportName']]
+    encrave_costs['refer'] = 'en'
+    encrave_costs = encrave_costs.rename(
+            columns={'Cost': 'encrave_cost',
+                     'ReportName': "encrave_source"})
+    data = data.merge(encrave_costs, on=['campaign', 'refer'],
+            how='outer', validate='1:1', indicator=True)
+
+    left_only_idx = (data.refer=='en') & (data._merge=='left_only')
+    if left_only_idx.any():
+        warn("keen data has 'en' campaigns not contained in Encrave report")
+        warn("CampaignNames: %s" % data.loc[left_only_idx, 'campaign'].tolist())
+
+    right_only_idx = (data.refer=='en') & (data._merge=='right_only')
+    if right_only_idx.any():
+        warn("Encrave data has campaigns not contained in keen data")
+        warn("CampaignNames: %s" % data.loc[right_only_idx, 'campaign'].tolist())
+    
+    data = data[data._merge!='right_only']
+    data.drop(axis=1, labels='_merge', inplace=True)
     return data
 
 
@@ -131,8 +158,15 @@ def reorder_cols(df):
          'cost_event_variable',
          'keen_rev',
          'keen_cost',
+         'encrave_cost',
+         'encrave_source',
          'keen_profit',
          'keen_margin']
+    if 'encrave_cost' not in df.columns.tolist():
+        final_order.remove('encrave_cost')
+    if 'encrave_source' not in df.columns.tolist():
+        final_order.remove('encrave_source')
+
     #if set(df.columns) != set(final_order):
     #    print('extra cols: %s' % (set(df.columns) - set(final_order)))
     #    print('missing cols: %s' % (set(final_order) - set(df.columns)))
@@ -140,11 +174,13 @@ def reorder_cols(df):
     return df[final_order]
 
 
-def get_keen_report(kc, gc, timeframe, tz, by=None, offline=None):
+def get_keen_report(kc, gc, timeframe, tz, enclave_report_type=None, by=None, offline=None):
     filters = get_filters(gc, offline)
     data = get_all_keen_data(kc, timeframe, tz, filters, by=by)
     data = add_reference_rates(gc, data, offline)
     data = add_metrics(data)
+    if enclave_report_type:
+        data = add_encrave_costs(gc, data, enclave_report_type)
     data = reorder_cols(data)
     return data
 
@@ -169,14 +205,14 @@ def main():
     if this_now.day != local_now.day:
         raise AssertionError("Changing timezone " \
                 "in sheetname will show incorrect day")
-
+    
     # Yesterday report
     report_name = "Yesterday"
     timeframe = "previous_day"
     sheetname = 'runtime: {} {} report: {}'.format(display_now, timezone_short, report_name)
-    report = get_keen_report(keen_client, gdrive_client, timeframe, tz_str)
+    report = get_keen_report(keen_client, gdrive_client, timeframe, tz_str, enclave_report_type=report_name)
     write_to_sheets(gdrive_client, report, title, sheetname)
-
+    
     # Report Month to date excluding today
     report_name =  'MTD(not-today)'
     day = pacific_now.day
@@ -186,7 +222,7 @@ def main():
     else:
         timeframe = 'previous_{}_days'.format(n)
     sheetname = 'runtime: {} {} report: {}'.format(display_now, timezone_short, report_name)
-    report = get_keen_report(keen_client, gdrive_client, timeframe, tz_str)
+    report = get_keen_report(keen_client, gdrive_client, timeframe, tz_str, enclave_report_type=report_name)
     write_to_sheets(gdrive_client, report, title, sheetname)
 
     # No more than 20 sheets in workbook. Older results are deleted.
