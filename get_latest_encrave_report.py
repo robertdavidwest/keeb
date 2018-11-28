@@ -17,11 +17,13 @@ def get_encrave_report(date_yesterday):
         raise AssertionError("more than one csv, check query")
     data = csvs[0]['data']
     name = csvs[0]['emailsubject']
+    data = data.rename(columns={'Campaign Name': 'campaign'})
+    data['campaign'] = data.campaign.str.lower()
     return data, name
 
 
 def aggregate(data, date_yesterday, report_name):
-    mtd = data.groupby("Campaign Name", as_index=False).agg({'Cost': 'sum'})
+    mtd = data.groupby("campaign", as_index=False).agg({'Cost': 'sum'})
     mtd['ReportName'] = report_name
     date_yesterday = date_yesterday.replace("-","/")
     yesterday = data.query("Date == @date_yesterday")
@@ -42,8 +44,8 @@ def main():
     date_yesterday = datetime.strftime(datetime.now() - timedelta(1), '%m-%d-%Y')
     data, report_name  = get_encrave_report(date_yesterday)
     mtd_report, yest_report = aggregate(data, date_yesterday, report_name)
-    write_encrave_report(gc, mtd_report, "MTD")
-    write_encrave_report(gc, yest_report, "yesterday")
+    write_encrave_report(gc, mtd_report, "MTD(not-today)")
+    write_encrave_report(gc, yest_report, "Yesterday")
 
 
 if __name__ == '__main__':
