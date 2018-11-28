@@ -44,8 +44,7 @@ def main():
     exclusions = exclusions.fillna("")
     exclusions = exclusions.drop_duplicates()
     update_exclusions_in_sheets(gdrive_client, exclusions)
-    return exclusions
 
 
 if __name__ == '__main__':
-    ee =main()
+    main()
