@@ -13,10 +13,16 @@ def get_encrave_report(date_yesterday):
     email_subject =  'Encrave: buzzworthy MTD as of %s' % date_yesterday
     service = gmail.get_gmail_service(GMAIL_CREDENTIALS_PATH, GMAIL_TOKEN_PATH)
     csvs = gmail.query_for_csv_attachments(service, email_subject)
-    if len(csvs) != 1: 
-        raise AssertionError("more than one csv, check query")
-    data = csvs[0]['data']
-    name = csvs[0]['emailsubject']
+    if len(csvs) > 1:
+        csvs = [c for c in csvs if date_yesterday in c['emailsubject']]
+    if len(csvs) == 0: 
+        raise AssertionError("No csvs were found for query: %s" % email_subject)
+    if len(csvs) > 1: 
+        raise AssertionError("Multiple csvs were found for query: %s" % email_subject)
+
+    csv = csvs[0]
+    data = csv['data']
+    name = csv['emailsubject']
     data = data.rename(columns={'Campaign Name': 'campaign'})
     data['campaign'] = data.campaign.str.lower()
     return data, name
