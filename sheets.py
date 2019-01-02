@@ -67,8 +67,13 @@ def write_to_sheets(gc, data, title, sheetname):
 
 
 def sheet_to_frame(s):
-    df = pd.DataFrame(s.get_all_records())
-    df = df[s.get_all_values()[0]]
+    records = s.get_all_records()
+    columns = s.get_all_values()[0]
+    if records:
+        df = pd.DataFrame(records)
+        df = df[columns]
+    else:
+        df = pd.DataFrame({}, columns=columns)
     return df
 
 
