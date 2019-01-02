@@ -12,7 +12,7 @@ GMAIL_TOKEN_PATH = "/home/robertdavidwest/databreakthroughs-gmail-token.json"
 def get_encrave_report(date_yesterday):
     email_subject =  'Encrave: buzzworthy MTD as of %s' % date_yesterday
     service = gmail.get_gmail_service(GMAIL_CREDENTIALS_PATH, GMAIL_TOKEN_PATH)
-    csvs = gmail.query_for_csv_attachments(service, email_subject)
+    csvs = gmail.query_for_csv_or_xl_attachments(service, email_subject)
     if len(csvs) > 1:
         csvs = [c for c in csvs if date_yesterday in c['emailsubject']]
     if len(csvs) == 0: 
