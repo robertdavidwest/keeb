@@ -40,6 +40,15 @@ def get_all_keen_data(client, timeframe, tz, filters=None, by=None):
     return data
 
 
+def remove_dollar(x):
+    if type(x) == str:
+        if x == '':
+            return np.nan
+        return float(x.replace("$", ""))
+    else:
+        return x
+
+
 def add_reference_rates(gc, data, offline=None):
     ref_rate_title = "BW-Video-Keen-Key"
 
@@ -50,11 +59,22 @@ def add_reference_rates(gc, data, offline=None):
 
     ref_rates = {k: df.replace("NULL", np.nan)
                  for k, df in ref_rates.iteritems()}
+    ref_rates = {k: df.dropna(axis=0, how='all')
+                 for k, df in ref_rates.iteritems()}
 
-    data = data.merge(ref_rates['REVENUE RATE'],
+
+    rev_rates = ref_rates['REVENUE RATE']
+    if rev_rates.revenue_rate.dtype == np.object:
+        rev_rates['revenue_rate'] = rev_rates['revenue_rate'].apply(remove_dollar)
+
+    cost_rates = ref_rates['COST RATE']
+    if cost_rates.cost_rate.dtype == np.object:
+        cost_rates['cost_rate'] = cost_rates['cost_rate'].apply(remove_dollar)
+
+    data = data.merge(rev_rates,
                       on='program', how='left')
 
-    data = data.merge(ref_rates['COST RATE'],
+    data = data.merge(cost_rates,
                      on=['campaign', 'refer'],
                      how='left')
     return data
@@ -179,6 +199,7 @@ def get_keen_report(kc, gc, timeframe, tz, enclave_report_type=None, by=None, of
     data = get_all_keen_data(kc, timeframe, tz, filters, by=by)
     data = add_reference_rates(gc, data, offline)
     data = add_metrics(data)
+    data = data.drop_duplicates()
     if enclave_report_type:
         data = add_encrave_costs(gc, data, enclave_report_type)
     data = reorder_cols(data)
